@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pydantic
 from loguru import logger
+
 from mybot.config.schema import Config
 
 # Global variable to store current config path (for multi-instance support)

@@ -2,11 +2,14 @@ import typer
 
 app = typer.Typer()
 
+from typing import Any
+
 from rich.console import Console
 
 console = Console()
 
 from mybot import __logo__, __version__
+from mybot.cli.stream import ThinkingSpinner
 
 
 @app.command()
@@ -57,5 +60,60 @@ def onboard(
 
 
 @app.command()
-def gk():
-    print("Hello GK")
+def ask(
+    message: str = typer.Option(None, "--message", "-m", help="Message to send to the llm"),
+    logs: bool = typer.Option(False, "--logs/--no-logs", help="Show mybot runtime logs during chat"),
+):
+    """Interact with the agent directly."""
+    from loguru import logger
+
+    from mybot.agent.loop import AgentLoop
+    from mybot.bus.queue import MessageBus
+    from mybot.config.loader import get_config_path, load_config
+
+    config_path = get_config_path()
+    config = load_config(config_path)
+
+    # Hardcoding for now
+    provider = "openai"
+    model = "gpt5-nano"
+
+
+    if logs:
+        logger.enable("mybot")
+    else:
+        logger.disable("mybot")
+
+    agent_loop = AgentLoop(
+        provider = provider,
+        model = model
+    )
+
+    # Shared reference for progress callbacks
+    _thinking: ThinkingSpinner | None = None
+
+    async def _cli_progress(content: str, *, tool_hint: bool = False, **_kwargs: Any) -> None:
+        ch = agent_loop.channels_config
+        if ch and tool_hint and not ch.send_tool_hints:
+            return
+        if ch and not tool_hint and not ch.send_progress:
+            return
+        _print_cli_progress_line(content, _thinking)
+    
+    if message:
+        # Single message mode — direct call, no bus needed
+        async def run_once():
+            pass
+    
+    print("ALL GOOD TILL HERE")
+
+
+from contextlib import nullcontext
+
+
+def _print_cli_progress_line(text: str, thinking: ThinkingSpinner | None) -> None:
+    """Print a CLI progress line, pausing the spinner if needed."""
+    if not text.strip():
+        return
+    with thinking.pause() if thinking else nullcontext():
+        console.print(f"  [dim]↳ {text}[/dim]")
