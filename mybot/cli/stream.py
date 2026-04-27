@@ -31,7 +31,6 @@ def _make_console() -> Console:
     return Console(file=sys.stdout, force_terminal=sys.stdout.isatty())
 
 
-
 class ThinkingSpinner:
     """Spinner that shows 'mybot is thinking...' with pause support."""
 

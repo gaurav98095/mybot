@@ -1,3 +1,6 @@
+import asyncio
+import sys
+
 import typer
 
 app = typer.Typer()
@@ -61,8 +64,13 @@ def onboard(
 
 @app.command()
 def ask(
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the llm"),
-    logs: bool = typer.Option(False, "--logs/--no-logs", help="Show mybot runtime logs during chat"),
+    message: str = typer.Option(
+        None, "--message", "-m", help="Message to send to the llm"
+    ),
+    session_id: str = typer.Option("cli:direct", "--session", "-s", help="Session ID"),
+    logs: bool = typer.Option(
+        False, "--logs/--no-logs", help="Show mybot runtime logs during chat"
+    ),
 ):
     """Interact with the agent directly."""
     from loguru import logger
@@ -78,37 +86,53 @@ def ask(
     provider = "openai"
     model = "gpt5-nano"
 
-
     if logs:
         logger.enable("mybot")
     else:
         logger.disable("mybot")
 
-    agent_loop = AgentLoop(
-        provider = provider,
-        model = model
-    )
+    agent_loop = AgentLoop(provider=provider, model=model)
 
     # Shared reference for progress callbacks
     _thinking: ThinkingSpinner | None = None
 
-    async def _cli_progress(content: str, *, tool_hint: bool = False, **_kwargs: Any) -> None:
+    async def _cli_progress(
+        content: str, *, tool_hint: bool = False, **_kwargs: Any
+    ) -> None:
         ch = agent_loop.channels_config
         if ch and tool_hint and not ch.send_tool_hints:
             return
         if ch and not tool_hint and not ch.send_progress:
             return
         _print_cli_progress_line(content, _thinking)
-    
+
     if message:
         # Single message mode — direct call, no bus needed
         async def run_once():
             pass
-    
-    print("ALL GOOD TILL HERE")
+
+    else:
+        _init_prompt_session()
+
+        console.print(
+            f"{__logo__} Interactive mode [bold blue]({config.agents.defaults.model})[/bold blue] — type [bold]exit[/bold] or [bold]Ctrl+C[/bold] to quit\n"
+        )
+
+        if ":" in session_id:
+            cli_channel, cli_chat_id = session_id.split(":", 1)
+        else:
+            cli_channel, cli_chat_id = "cli", session_id
+
+        async def run_interactive():
+            pass
+
+        asyncio.run(run_interactive())
 
 
 from contextlib import nullcontext
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 
 
 def _print_cli_progress_line(text: str, thinking: ThinkingSpinner | None) -> None:
@@ -117,3 +141,41 @@ def _print_cli_progress_line(text: str, thinking: ThinkingSpinner | None) -> Non
         return
     with thinking.pause() if thinking else nullcontext():
         console.print(f"  [dim]↳ {text}[/dim]")
+
+
+class SafeFileHistory(FileHistory):
+    """FileHistory subclass that sanitizes surrogate characters on write.
+
+    On Windows, special Unicode input (emoji, mixed-script) can produce
+    surrogate characters that crash prompt_toolkit's file write.
+    """
+
+    def store_string(self, string: str) -> None:
+        safe = string.encode("utf-8", errors="surrogateescape").decode(
+            "utf-8", errors="replace"
+        )
+        super().store_string(safe)
+
+
+def _init_prompt_session() -> None:
+    """Create the prompt_toolkit session with persistent file history."""
+    global _PROMPT_SESSION, _SAVED_TERM_ATTRS
+
+    # Save terminal state so we can restore it on exit
+    try:
+        import termios
+
+        _SAVED_TERM_ATTRS = termios.tcgetattr(sys.stdin.fileno())
+    except Exception:
+        pass
+
+    from nanobot.config.paths import get_cli_history_path
+
+    history_file = get_cli_history_path()
+    history_file.parent.mkdir(parents=True, exist_ok=True)
+
+    _PROMPT_SESSION = PromptSession(
+        history=SafeFileHistory(str(history_file)),
+        enable_open_in_editor=False,
+        multiline=False,  # Enter submits (single line mode)
+    )
