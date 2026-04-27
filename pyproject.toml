@@ -1,0 +1,11 @@
+[project]
+name = "mybot"
+version = "0.1.0"
+dependencies = ["typer"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+mybot = "mybot.cli.commands:app"
