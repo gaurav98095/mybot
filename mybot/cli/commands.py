@@ -81,6 +81,7 @@ def ask(
 
     config_path = get_config_path()
     config = load_config(config_path)
+    bus = MessageBus()
 
     # Hardcoding for now
     provider = "openai"
@@ -91,7 +92,7 @@ def ask(
     else:
         logger.disable("mybot")
 
-    agent_loop = AgentLoop(provider=provider, model=model)
+    agent_loop = AgentLoop(provider=provider, model=model, bus=bus)
 
     # Shared reference for progress callbacks
     _thinking: ThinkingSpinner | None = None
