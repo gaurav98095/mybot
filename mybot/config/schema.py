@@ -15,6 +15,7 @@ class Base(BaseModel):
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
+
 class ChannelsConfig(Base):
     """Configuration for chat channels.
 
@@ -27,9 +28,15 @@ class ChannelsConfig(Base):
 
     send_progress: bool = True  # stream agent's text progress to the channel
     send_tool_hints: bool = False  # stream tool-call hints (e.g. read_file("…"))
-    send_max_retries: int = Field(default=3, ge=0, le=10)  # Max delivery attempts (initial send included)
-    transcription_provider: str = "groq"  # Voice transcription backend: "groq" or "openai"
-    transcription_language: str | None = Field(default=None, pattern=r"^[a-z]{2,3}$")  # Optional ISO-639-1 hint for audio transcription
+    send_max_retries: int = Field(
+        default=3, ge=0, le=10
+    )  # Max delivery attempts (initial send included)
+    transcription_provider: str = (
+        "groq"  # Voice transcription backend: "groq" or "openai"
+    )
+    transcription_language: str | None = Field(
+        default=None, pattern=r"^[a-z]{2,3}$"
+    )  # Optional ISO-639-1 hint for audio transcription
 
 
 class DreamConfig(Base):
@@ -38,7 +45,9 @@ class DreamConfig(Base):
     _HOUR_MS = 3_600_000
 
     interval_h: int = Field(default=2, ge=1)  # Every 2 hours by default
-    cron: str | None = Field(default=None, exclude=True)  # Legacy compatibility override
+    cron: str | None = Field(
+        default=None, exclude=True
+    )  # Legacy compatibility override
     model_override: str | None = Field(
         default=None,
         validation_alias=AliasChoices("modelOverride", "model", "model_override"),
@@ -80,10 +89,16 @@ class AgentDefaults(Base):
     max_tool_iterations: int = 200
     max_tool_result_chars: int = 16_000
     provider_retry_mode: Literal["standard", "persistent"] = "standard"
-    reasoning_effort: str | None = None  # low / medium / high / adaptive - enables LLM thinking mode
+    reasoning_effort: str | None = (
+        None  # low / medium / high / adaptive - enables LLM thinking mode
+    )
     timezone: str = "UTC"  # IANA timezone, e.g. "Asia/Shanghai", "America/New_York"
-    unified_session: bool = False  # Share one session across all channels (single-user multi-device)
-    disabled_skills: list[str] = Field(default_factory=list)  # Skill names to exclude from loading (e.g. ["summarize", "skill-creator"])
+    unified_session: bool = (
+        False  # Share one session across all channels (single-user multi-device)
+    )
+    disabled_skills: list[str] = Field(
+        default_factory=list
+    )  # Skill names to exclude from loading (e.g. ["summarize", "skill-creator"])
     session_ttl_minutes: int = Field(
         default=0,
         ge=0,
@@ -111,14 +126,20 @@ class ProviderConfig(Base):
 
     api_key: str | None = None
     api_base: str | None = None
-    extra_headers: dict[str, str] | None = None  # Custom headers (e.g. APP-Code for AiHubMix)
+    extra_headers: dict[str, str] | None = (
+        None  # Custom headers (e.g. APP-Code for AiHubMix)
+    )
 
 
 class ProvidersConfig(Base):
     """Configuration for LLM providers."""
 
-    custom: ProviderConfig = Field(default_factory=ProviderConfig)  # Any OpenAI-compatible endpoint
-    azure_openai: ProviderConfig = Field(default_factory=ProviderConfig)  # Azure OpenAI (model = deployment name)
+    custom: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Any OpenAI-compatible endpoint
+    azure_openai: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Azure OpenAI (model = deployment name)
     anthropic: ProviderConfig = Field(default_factory=ProviderConfig)
     openai: ProviderConfig = Field(default_factory=ProviderConfig)
     openrouter: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -127,25 +148,55 @@ class ProvidersConfig(Base):
     zhipu: ProviderConfig = Field(default_factory=ProviderConfig)
     dashscope: ProviderConfig = Field(default_factory=ProviderConfig)
     vllm: ProviderConfig = Field(default_factory=ProviderConfig)
-    ollama: ProviderConfig = Field(default_factory=ProviderConfig)  # Ollama local models
-    lm_studio: ProviderConfig = Field(default_factory=ProviderConfig)  # LM Studio local models
-    ovms: ProviderConfig = Field(default_factory=ProviderConfig)  # OpenVINO Model Server (OVMS)
+    ollama: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Ollama local models
+    lm_studio: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # LM Studio local models
+    ovms: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # OpenVINO Model Server (OVMS)
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     minimax: ProviderConfig = Field(default_factory=ProviderConfig)
-    minimax_anthropic: ProviderConfig = Field(default_factory=ProviderConfig)  # MiniMax Anthropic endpoint (thinking)
+    minimax_anthropic: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # MiniMax Anthropic endpoint (thinking)
     mistral: ProviderConfig = Field(default_factory=ProviderConfig)
-    stepfun: ProviderConfig = Field(default_factory=ProviderConfig)  # Step Fun (阶跃星辰)
-    xiaomi_mimo: ProviderConfig = Field(default_factory=ProviderConfig)  # Xiaomi MIMO (小米)
-    aihubmix: ProviderConfig = Field(default_factory=ProviderConfig)  # AiHubMix API gateway
-    siliconflow: ProviderConfig = Field(default_factory=ProviderConfig)  # SiliconFlow (硅基流动)
-    volcengine: ProviderConfig = Field(default_factory=ProviderConfig)  # VolcEngine (火山引擎)
-    volcengine_coding_plan: ProviderConfig = Field(default_factory=ProviderConfig)  # VolcEngine Coding Plan
-    byteplus: ProviderConfig = Field(default_factory=ProviderConfig)  # BytePlus (VolcEngine international)
-    byteplus_coding_plan: ProviderConfig = Field(default_factory=ProviderConfig)  # BytePlus Coding Plan
-    openai_codex: ProviderConfig = Field(default_factory=ProviderConfig, exclude=True)  # OpenAI Codex (OAuth)
-    github_copilot: ProviderConfig = Field(default_factory=ProviderConfig, exclude=True)  # Github Copilot (OAuth)
-    qianfan: ProviderConfig = Field(default_factory=ProviderConfig)  # Qianfan (百度千帆)
+    stepfun: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Step Fun (阶跃星辰)
+    xiaomi_mimo: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Xiaomi MIMO (小米)
+    aihubmix: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # AiHubMix API gateway
+    siliconflow: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # SiliconFlow (硅基流动)
+    volcengine: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # VolcEngine (火山引擎)
+    volcengine_coding_plan: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # VolcEngine Coding Plan
+    byteplus: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # BytePlus (VolcEngine international)
+    byteplus_coding_plan: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # BytePlus Coding Plan
+    openai_codex: ProviderConfig = Field(
+        default_factory=ProviderConfig, exclude=True
+    )  # OpenAI Codex (OAuth)
+    github_copilot: ProviderConfig = Field(
+        default_factory=ProviderConfig, exclude=True
+    )  # Github Copilot (OAuth)
+    qianfan: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Qianfan (百度千帆)
 
 
 class HeartbeatConfig(Base):
@@ -199,19 +250,27 @@ class ExecToolConfig(Base):
     timeout: int = 60
     path_append: str = ""
     sandbox: str = ""  # sandbox backend: "" (none) or "bwrap"
-    allowed_env_keys: list[str] = Field(default_factory=list)  # Env var names to pass through to subprocess (e.g. ["GOPATH", "JAVA_HOME"])
+    allowed_env_keys: list[str] = Field(
+        default_factory=list
+    )  # Env var names to pass through to subprocess (e.g. ["GOPATH", "JAVA_HOME"])
+
 
 class MCPServerConfig(Base):
     """MCP server connection configuration (stdio or HTTP)."""
 
-    type: Literal["stdio", "sse", "streamableHttp"] | None = None  # auto-detected if omitted
+    type: Literal["stdio", "sse", "streamableHttp"] | None = (
+        None  # auto-detected if omitted
+    )
     command: str = ""  # Stdio: command to run (e.g. "npx")
     args: list[str] = Field(default_factory=list)  # Stdio: command arguments
     env: dict[str, str] = Field(default_factory=dict)  # Stdio: extra env vars
     url: str = ""  # HTTP/SSE: endpoint URL
     headers: dict[str, str] = Field(default_factory=dict)  # HTTP/SSE: custom headers
     tool_timeout: int = 30  # seconds before a tool call is cancelled
-    enabled_tools: list[str] = Field(default_factory=lambda: ["*"])  # Only register these tools; accepts raw MCP names or wrapped mcp_<server>_<tool> names; ["*"] = all tools; [] = no tools
+    enabled_tools: list[str] = Field(
+        default_factory=lambda: ["*"]
+    )  # Only register these tools; accepts raw MCP names or wrapped mcp_<server>_<tool> names; ["*"] = all tools; [] = no tools
+
 
 class MyToolConfig(Base):
     """Self-inspection tool configuration."""
@@ -226,9 +285,13 @@ class ToolsConfig(Base):
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
     my: MyToolConfig = Field(default_factory=MyToolConfig)
-    restrict_to_workspace: bool = False  # restrict all tool access to workspace directory
+    restrict_to_workspace: bool = (
+        False  # restrict all tool access to workspace directory
+    )
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
-    ssrf_whitelist: list[str] = Field(default_factory=list)  # CIDR ranges to exempt from SSRF blocking (e.g. ["100.64.0.0/10"] for Tailscale)
+    ssrf_whitelist: list[str] = Field(
+        default_factory=list
+    )  # CIDR ranges to exempt from SSRF blocking (e.g. ["100.64.0.0/10"] for Tailscale)
 
 
 class Config(BaseSettings):
@@ -294,7 +357,10 @@ class Config(BaseSettings):
             p = getattr(self.providers, spec.name, None)
             if not (p and p.api_base):
                 continue
-            if spec.detect_by_base_keyword and spec.detect_by_base_keyword in p.api_base:
+            if (
+                spec.detect_by_base_keyword
+                and spec.detect_by_base_keyword in p.api_base
+            ):
                 return p, spec.name
             if local_fallback is None:
                 local_fallback = (p, spec.name)

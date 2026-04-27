@@ -1,11 +1,9 @@
-
 import json
 from pathlib import Path
 
 import pydantic
 from loguru import logger
 from mybot.config.schema import Config
-
 
 # Global variable to store current config path (for multi-instance support)
 _current_config_path: Path | None = None
@@ -64,4 +62,3 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-

@@ -5,6 +5,7 @@ from typing import Literal
 @dataclass
 class CronSchedule:
     """Schedule definition for a cron job."""
+
     kind: Literal["at", "every", "cron"]
     # For "at": timestamp in ms
     at_ms: int | None = None
