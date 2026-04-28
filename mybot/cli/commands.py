@@ -15,6 +15,11 @@ from mybot import __logo__, __version__
 from mybot.cli.stream import ThinkingSpinner
 
 
+from prompt_toolkit import PromptSession, print_formatted_text
+
+_PROMPT_SESSION: PromptSession | None = None
+
+
 @app.command()
 def onboard(
     workdir: str | None = typer.Option(None, "--workdir", "-w", help="Work Directory")
@@ -170,7 +175,7 @@ def _init_prompt_session() -> None:
     except Exception:
         pass
 
-    from nanobot.config.paths import get_cli_history_path
+    from mybot.config.paths import get_cli_history_path
 
     history_file = get_cli_history_path()
     history_file.parent.mkdir(parents=True, exist_ok=True)

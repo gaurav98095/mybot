@@ -1,9 +1,10 @@
-from loguru import logger
 import asyncio
 
+from loguru import logger
 
-from mybot.bus.queue import MessageBus
 from mybot.agent.runner import AgentRunner
+from mybot.bus.queue import MessageBus
+
 
 class AgentLoop:
     """
@@ -40,10 +41,8 @@ class AgentLoop:
 
             raw = msg.content.strip()
 
-
     async def _process_message(self, msg):
         pass
 
-    
     async def _run_agent_loop(self, msg):
         pass

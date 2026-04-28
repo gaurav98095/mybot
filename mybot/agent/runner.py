@@ -1,5 +1,5 @@
-
 import asyncio
+
 
 class AgentRunner:
     def __init__(self, provider):
@@ -13,12 +13,6 @@ class AgentRunner:
         coro = self.provider.chat_with_retry(**kwargs)
         return await asyncio.wait_for(coro, timeout=10)
 
-
-    def _build_request_kwargs(
-        self,
-        messages
-    ):
-        kwargs = {
-            "messages": messages
-        }
+    def _build_request_kwargs(self, messages):
+        kwargs = {"messages": messages}
         return kwargs
