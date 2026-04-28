@@ -12,7 +12,9 @@ from rich.console import Console
 console = Console()
 
 from mybot import __logo__, __version__
-from mybot.cli.stream import ThinkingSpinner
+from mybot.cli.stream import ThinkingSpinner, StreamRenderer
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.formatted_text import ANSI, HTML
 
 
 from prompt_toolkit import PromptSession, print_formatted_text
@@ -130,7 +132,74 @@ def ask(
             cli_channel, cli_chat_id = "cli", session_id
 
         async def run_interactive():
-            pass
+            bus_task = asyncio.create_task(agent_loop.run())
+            turn_done = asyncio.Event()
+            turn_done.set()
+
+            turn_response = []
+            renderer: StreamRenderer | None = None
+
+            async def _consume_outbound():
+                
+                while True:
+                    try:
+                        msg = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
+                        # Example handling — depends on your message schema
+                        if msg.type == "stream":
+                            if renderer:
+                                renderer.add_chunk(msg.content)
+
+                        elif msg.type == "final":
+                            turn_response.append((msg.content, msg.metadata))
+                            turn_done.set()
+
+                        elif msg.type == "error":
+                            print("Error:", msg.content)
+                            turn_done.set()
+                            
+                    except asyncio.TimeoutError:
+                        continue
+                    except asyncio.CancelledError:
+                        break
+
+
+            outbound_task = asyncio.create_task(_consume_outbound())
+
+
+            while True:
+                if renderer:
+                    renderer.stop_for_input()
+                user_input = await _read_interactive_input_async()
+                command = user_input.strip()
+                if not command:
+                    continue
+                
+
+                turn_done.clear()
+                turn_response.clear()
+                markdown = True
+                renderer = StreamRenderer(render_markdown=markdown)
+                from mybot.bus.events import InboundMessage
+
+                await bus.publish_inbound(InboundMessage(
+                    channel=cli_channel,
+                    sender_id="user",
+                    chat_id=cli_chat_id,
+                    content=user_input,
+                    metadata={"_wants_stream": True},
+                ))
+
+                await turn_done.wait()
+                print("GKKKK")
+
+                if turn_response:
+                    content, meta = turn_response[0]
+                    print(content)
+                else:
+                    print("WAIT")
+
+
+
 
         asyncio.run(run_interactive())
 
@@ -185,3 +254,21 @@ def _init_prompt_session() -> None:
         enable_open_in_editor=False,
         multiline=False,  # Enter submits (single line mode)
     )
+
+async def _read_interactive_input_async() -> str:
+    """Read user input using prompt_toolkit (handles paste, history, display).
+
+    prompt_toolkit natively handles:
+    - Multiline paste (bracketed paste mode)
+    - History navigation (up/down arrows)
+    - Clean display (no ghost characters or artifacts)
+    """
+    if _PROMPT_SESSION is None:
+        raise RuntimeError("Call _init_prompt_session() first")
+    try:
+        with patch_stdout():
+            return await _PROMPT_SESSION.prompt_async(
+                HTML("<b fg='ansiblue'>You:</b> "),
+            )
+    except EOFError as exc:
+        raise KeyboardInterrupt from exc
