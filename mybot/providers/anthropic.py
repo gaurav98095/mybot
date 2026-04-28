@@ -635,7 +635,7 @@ class AnthropicProvider(LLMProvider):
             reasoning_effort,
             tool_choice,
         )
-        idle_timeout_s = int(os.environ.get("NANOBOT_STREAM_IDLE_TIMEOUT_S", "90"))
+        idle_timeout_s = int(os.environ.get("MYBOT_STREAM_IDLE_TIMEOUT_S", "90"))
         try:
             async with self._client.messages.stream(**kwargs) as stream:
                 if on_content_delta:
