@@ -11,13 +11,12 @@ from rich.console import Console
 
 console = Console()
 
-from mybot import __logo__, __version__
-from mybot.cli.stream import ThinkingSpinner, StreamRenderer
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.formatted_text import ANSI, HTML
-
-
 from prompt_toolkit import PromptSession, print_formatted_text
+from prompt_toolkit.formatted_text import ANSI, HTML
+from prompt_toolkit.patch_stdout import patch_stdout
+
+from mybot import __logo__, __version__
+from mybot.cli.stream import StreamRenderer, ThinkingSpinner
 
 _PROMPT_SESSION: PromptSession | None = None
 
@@ -85,14 +84,19 @@ def ask(
     from mybot.agent.loop import AgentLoop
     from mybot.bus.queue import MessageBus
     from mybot.config.loader import get_config_path, load_config
+    from mybot.providers.anthropic import AnthropicProvider
 
     config_path = get_config_path()
     config = load_config(config_path)
     bus = MessageBus()
 
-    # Hardcoding for now
-    provider = "openai"
-    model = "gpt5-nano"
+    model = config.agents.defaults.model
+    provider_cfg = config.providers.anthropic
+    provider = AnthropicProvider(
+        api_key=provider_cfg.api_key,
+        api_base=provider_cfg.api_base,
+        default_model=model,
+    )
 
     if logs:
         logger.enable("mybot")
@@ -107,17 +111,31 @@ def ask(
     async def _cli_progress(
         content: str, *, tool_hint: bool = False, **_kwargs: Any
     ) -> None:
-        ch = agent_loop.channels_config
-        if ch and tool_hint and not ch.send_tool_hints:
-            return
-        if ch and not tool_hint and not ch.send_progress:
-            return
         _print_cli_progress_line(content, _thinking)
 
     if message:
-        # Single message mode — direct call, no bus needed
+        # Single message mode
         async def run_once():
-            pass
+            from mybot.bus.events import InboundMessage
+
+            loop_task = asyncio.create_task(agent_loop.run())
+            await bus.publish_inbound(
+                InboundMessage(
+                    channel="cli",
+                    sender_id="user",
+                    chat_id="direct",
+                    content=message,
+                )
+            )
+            try:
+                msg = await asyncio.wait_for(bus.consume_outbound(), timeout=60.0)
+                console.print(msg.content)
+            except asyncio.TimeoutError:
+                console.print("[red]Timeout waiting for response[/red]")
+            finally:
+                loop_task.cancel()
+
+        asyncio.run(run_once())
 
     else:
         _init_prompt_session()
@@ -140,31 +158,31 @@ def ask(
             renderer: StreamRenderer | None = None
 
             async def _consume_outbound():
-                
                 while True:
                     try:
-                        msg = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
-                        # Example handling — depends on your message schema
+                        msg = await asyncio.wait_for(
+                            bus.consume_outbound(), timeout=1.0
+                        )
                         if msg.type == "stream":
                             if renderer:
-                                renderer.add_chunk(msg.content)
-
+                                await renderer.on_delta(msg.content)
                         elif msg.type == "final":
+                            if renderer:
+                                await renderer.on_delta(msg.content)
+                                await renderer.on_end()
                             turn_response.append((msg.content, msg.metadata))
                             turn_done.set()
-
                         elif msg.type == "error":
-                            print("Error:", msg.content)
+                            if renderer:
+                                await renderer.on_end()
+                            console.print(f"[red]Error:[/red] {msg.content}")
                             turn_done.set()
-                            
                     except asyncio.TimeoutError:
                         continue
                     except asyncio.CancelledError:
                         break
 
-
             outbound_task = asyncio.create_task(_consume_outbound())
-
 
             while True:
                 if renderer:
@@ -173,7 +191,6 @@ def ask(
                 command = user_input.strip()
                 if not command:
                     continue
-                
 
                 turn_done.clear()
                 turn_response.clear()
@@ -181,25 +198,17 @@ def ask(
                 renderer = StreamRenderer(render_markdown=markdown)
                 from mybot.bus.events import InboundMessage
 
-                await bus.publish_inbound(InboundMessage(
-                    channel=cli_channel,
-                    sender_id="user",
-                    chat_id=cli_chat_id,
-                    content=user_input,
-                    metadata={"_wants_stream": True},
-                ))
+                await bus.publish_inbound(
+                    InboundMessage(
+                        channel=cli_channel,
+                        sender_id="user",
+                        chat_id=cli_chat_id,
+                        content=user_input,
+                        metadata={"_wants_stream": True},
+                    )
+                )
 
                 await turn_done.wait()
-                print("GKKKK")
-
-                if turn_response:
-                    content, meta = turn_response[0]
-                    print(content)
-                else:
-                    print("WAIT")
-
-
-
 
         asyncio.run(run_interactive())
 
@@ -254,6 +263,7 @@ def _init_prompt_session() -> None:
         enable_open_in_editor=False,
         multiline=False,  # Enter submits (single line mode)
     )
+
 
 async def _read_interactive_input_async() -> str:
     """Read user input using prompt_toolkit (handles paste, history, display).

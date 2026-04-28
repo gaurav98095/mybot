@@ -11,7 +11,10 @@ from email.utils import parsedate_to_datetime
 from typing import Any
 
 from loguru import logger
-from nanobot.utils.helpers import image_placeholder_text
+
+
+def image_placeholder_text(path: str, empty: str = "[image]") -> str:
+    return f"[image: {path}]" if path else empty
 
 
 @dataclass

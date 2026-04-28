@@ -33,6 +33,7 @@ class OutboundMessage:
     channel: str
     chat_id: str
     content: str
+    type: str = "final"  # "stream", "final", or "error"
     reply_to: str | None = None
     media: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)

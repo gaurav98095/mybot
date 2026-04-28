@@ -11,7 +11,8 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import json_repair
-from nanobot.providers.base import LLMProvider, LLMResponse, ToolCallRequest
+
+from mybot.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 
 _ALNUM = string.ascii_letters + string.digits
 

@@ -66,7 +66,6 @@ class ThinkingSpinner:
         return _ctx()
 
 
-
 class StreamRenderer:
     """Rich Live streaming with markdown. auto_refresh=False avoids render races.
 
