@@ -1,18 +1,17 @@
-import asyncio
+from mybot.providers.base import LLMProvider, LLMResponse
 
 
 class AgentRunner:
-    def __init__(self, provider):
+    def __init__(self, provider: LLMProvider, model: str):
         self.provider = provider
+        self.model = model
 
-    async def run(self, messages: list):
-        response = await self._request_model(messages)
+    async def run(self, messages: list) -> LLMResponse:
+        return await self._request_model(messages)
 
-    async def _request_model(self, messages):
+    async def _request_model(self, messages) -> LLMResponse:
         kwargs = self._build_request_kwargs(messages)
-        coro = self.provider.chat_with_retry(**kwargs)
-        return await asyncio.wait_for(coro, timeout=10)
+        return await self.provider.chat_with_retry(**kwargs)
 
-    def _build_request_kwargs(self, messages):
-        kwargs = {"messages": messages}
-        return kwargs
+    def _build_request_kwargs(self, messages) -> dict:
+        return {"messages": messages, "model": self.model}
