@@ -3,9 +3,14 @@ import asyncio
 from loguru import logger
 
 from mybot.agent.runner import AgentRunner
+from mybot.agent.tools.base import Tool
+from mybot.agent.tools.registry import ToolRegistry
+from mybot.agent.tools.shell import ShellTool
 from mybot.bus.events import InboundMessage, OutboundMessage
 from mybot.bus.queue import MessageBus
 from mybot.providers.base import LLMProvider
+
+_DEFAULT_TOOLS: list[Tool] = [ShellTool()]
 
 
 class AgentLoop:
@@ -15,16 +20,27 @@ class AgentLoop:
     It:
     1. Receives messages from the bus
     2. Builds conversation history
-    3. Calls the LLM via AgentRunner
+    3. Calls the LLM via AgentRunner (with tool-call loop)
     4. Sends responses back on the outbound bus
     """
 
-    def __init__(self, provider: LLMProvider, model: str, bus: MessageBus):
+    def __init__(
+        self,
+        provider: LLMProvider,
+        model: str,
+        bus: MessageBus,
+        tools: list[Tool] | None = None,
+    ):
         self.bus = bus
         self.model = model
         self._running = False
-        self.runner = AgentRunner(provider, model)
         self._history: list[dict] = []
+
+        registry = ToolRegistry()
+        for tool in (tools if tools is not None else _DEFAULT_TOOLS):
+            registry.register(tool)
+
+        self.runner = AgentRunner(provider, model, registry)
 
     async def run(self) -> None:
         """Run the agent loop, processing inbound messages one at a time."""
@@ -45,6 +61,8 @@ class AgentLoop:
     async def _process_message(self, msg: InboundMessage) -> None:
         self._history.append({"role": "user", "content": msg.content})
         try:
+            # runner mutates self._history with any intermediate tool call/result
+            # messages, then returns the final text response
             response = await self.runner.run(self._history)
             reply = response.content or ""
             self._history.append({"role": "assistant", "content": reply})
