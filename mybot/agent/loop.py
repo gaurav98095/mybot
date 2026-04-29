@@ -6,6 +6,7 @@ from mybot.agent.runner import AgentRunner
 from mybot.agent.tools.base import Tool
 from mybot.agent.tools.registry import ToolRegistry
 from mybot.agent.tools.shell import ShellTool
+from mybot.agent.tools.subagent import SubagentTool
 from mybot.agent.tools.web_search import WebSearchTool
 from mybot.bus.events import InboundMessage, OutboundMessage
 from mybot.bus.queue import MessageBus
@@ -39,9 +40,13 @@ class AgentLoop:
         self._history: list[dict] = []
 
         if tools is None:
-            tools = [
+            # sub_tools are given to subagents — no SubagentTool to prevent recursion
+            sub_tools: list[Tool] = [
                 ShellTool(),
                 WebSearchTool(config=search_config, proxy=proxy),
+            ]
+            tools = sub_tools + [
+                SubagentTool(provider=provider, model=model, sub_tools=sub_tools),
             ]
 
         registry = ToolRegistry()
