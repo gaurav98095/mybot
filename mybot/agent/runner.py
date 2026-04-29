@@ -1,4 +1,7 @@
+import json
+
 from loguru import logger
+from opentelemetry import trace
 
 from mybot.agent.tools.registry import ToolRegistry
 from mybot.providers.base import LLMProvider, LLMResponse
@@ -38,18 +41,30 @@ class AgentRunner:
             messages.append(assistant_msg)
 
             # Execute each requested tool and collect results
+            tracer = trace.get_tracer("mybot")
             for tc in response.tool_calls:
                 tool = self.registry.get(tc.name)
-                if tool is None:
-                    result = f"error: unknown tool '{tc.name}'"
-                    logger.warning("Unknown tool requested: {}", tc.name)
-                else:
-                    logger.info("Executing tool '{}' args={}", tc.name, tc.arguments)
-                    try:
-                        result = await tool.execute(**tc.arguments)
-                    except Exception as exc:
-                        result = f"error: {exc}"
-                        logger.error("Tool '{}' raised: {}", tc.name, exc)
+                with tracer.start_as_current_span(
+                    f"tool.{tc.name}",
+                    attributes={
+                        "openinference.span.kind": "TOOL",
+                        "tool.name": tc.name,
+                        "input.value": json.dumps(tc.arguments, ensure_ascii=False),
+                    },
+                ) as tool_span:
+                    if tool is None:
+                        result = f"error: unknown tool '{tc.name}'"
+                        logger.warning("Unknown tool requested: {}", tc.name)
+                    else:
+                        logger.info(
+                            "Executing tool '{}' args={}", tc.name, tc.arguments
+                        )
+                        try:
+                            result = await tool.execute(**tc.arguments)
+                        except Exception as exc:
+                            result = f"error: {exc}"
+                            logger.error("Tool '{}' raised: {}", tc.name, exc)
+                    tool_span.set_attribute("output.value", str(result)[:2000])
                 messages.append(
                     {
                         "role": "tool",

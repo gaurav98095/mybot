@@ -63,11 +63,22 @@ class ToolsConfig(Base):
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
 
 
+class PhoenixConfig(Base):
+    """Arize Phoenix tracing configuration."""
+
+    enabled: bool = False
+    host: str = "localhost"
+    port: int = 6006
+    container_name: str = "mybot-phoenix"
+    image: str = "arizephoenix/phoenix:latest"
+
+
 class Config(BaseSettings):
     """Root configuration for mybot."""
 
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    phoenix: PhoenixConfig = Field(default_factory=PhoenixConfig)
 
     model_config = ConfigDict(env_prefix="MYBOT_", env_nested_delimiter="__")
