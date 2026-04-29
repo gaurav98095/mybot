@@ -5,6 +5,9 @@ import typer
 
 app = typer.Typer()
 
+phoenix_app = typer.Typer(help="Manage the Phoenix tracing server.")
+app.add_typer(phoenix_app, name="phoenix")
+
 from rich.console import Console
 
 console = Console()
@@ -17,6 +20,68 @@ from mybot import __logo__
 from mybot.cli.stream import StreamRenderer, ThinkingSpinner
 
 _PROMPT_SESSION: PromptSession | None = None
+
+
+@phoenix_app.command("start")
+def phoenix_start():
+    """Start the Phoenix Docker container."""
+    import subprocess
+
+    from mybot.config.loader import get_config_path, load_config
+
+    cfg = load_config(get_config_path()).phoenix
+
+    running = subprocess.run(
+        ["docker", "ps", "-q", "-f", f"name=^{cfg.container_name}$"],
+        capture_output=True,
+        text=True,
+    )
+    if running.stdout.strip():
+        console.print(
+            f"[yellow]Phoenix already running[/yellow] → http://{cfg.host}:{cfg.port}"
+        )
+        return
+
+    console.print(f"Pulling / starting [bold]{cfg.image}[/bold] …")
+    subprocess.run(
+        [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            cfg.container_name,
+            "-p",
+            f"{cfg.port}:{cfg.port}",
+            "-p",
+            "4317:4317",
+            cfg.image,
+        ],
+        check=True,
+    )
+    console.print(f"[green]✓ Phoenix started[/green] → http://{cfg.host}:{cfg.port}")
+    console.print(
+        "  Set [cyan]phoenix.enabled = true[/cyan] in your config to activate tracing."
+    )
+
+
+@phoenix_app.command("stop")
+def phoenix_stop():
+    """Stop and remove the Phoenix Docker container."""
+    import subprocess
+
+    from mybot.config.loader import get_config_path, load_config
+
+    cfg = load_config(get_config_path()).phoenix
+
+    try:
+        subprocess.run(["docker", "stop", cfg.container_name], check=True)
+        subprocess.run(["docker", "rm", cfg.container_name], check=True)
+        console.print(f"[green]✓ Phoenix stopped[/green]")
+    except subprocess.CalledProcessError:
+        console.print(
+            f"[red]Could not stop '{cfg.container_name}' — is it running?[/red]"
+        )
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -86,6 +151,11 @@ def ask(
 
     config_path = get_config_path()
     config = load_config(config_path)
+
+    from mybot.telemetry import setup_tracing
+
+    setup_tracing(config.phoenix)
+
     bus = MessageBus()
 
     model = config.agents.defaults.model

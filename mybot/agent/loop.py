@@ -1,6 +1,9 @@
 import asyncio
+import uuid
 
 from loguru import logger
+from opentelemetry import trace
+from opentelemetry.trace import StatusCode
 
 from mybot.agent.runner import AgentRunner
 from mybot.agent.tools.base import Tool
@@ -72,28 +75,40 @@ class AgentLoop:
             await self._process_message(msg)
 
     async def _process_message(self, msg: InboundMessage) -> None:
-        self._history.append({"role": "user", "content": msg.content})
-        try:
-            # runner mutates self._history with any intermediate tool call/result
-            # messages, then returns the final text response
-            response = await self.runner.run(self._history)
-            reply = response.content or ""
-            self._history.append({"role": "assistant", "content": reply})
-            await self.bus.publish_outbound(
-                OutboundMessage(
-                    channel=msg.channel,
-                    chat_id=msg.chat_id,
-                    content=reply,
-                    type="final",
+        tracer = trace.get_tracer("mybot")
+        with tracer.start_as_current_span(
+            "agent.turn",
+            attributes={
+                "openinference.span.kind": "AGENT",
+                "session.id": str(uuid.uuid4()),
+                "input.value": msg.content,
+            },
+        ) as span:
+            self._history.append({"role": "user", "content": msg.content})
+            try:
+                # runner mutates self._history with any intermediate tool call/result
+                # messages, then returns the final text response
+                response = await self.runner.run(self._history)
+                reply = response.content or ""
+                span.set_attribute("output.value", reply)
+                self._history.append({"role": "assistant", "content": reply})
+                await self.bus.publish_outbound(
+                    OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content=reply,
+                        type="final",
+                    )
                 )
-            )
-        except Exception as e:
-            logger.error("Error processing message: {}", e)
-            await self.bus.publish_outbound(
-                OutboundMessage(
-                    channel=msg.channel,
-                    chat_id=msg.chat_id,
-                    content=f"Error: {e}",
-                    type="error",
+            except Exception as e:
+                span.record_exception(e)
+                span.set_status(StatusCode.ERROR, str(e))
+                logger.error("Error processing message: {}", e)
+                await self.bus.publish_outbound(
+                    OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content=f"Error: {e}",
+                        type="error",
+                    )
                 )
-            )
