@@ -295,21 +295,15 @@ class AnthropicProvider(LLMProvider):
     def _merge_consecutive(msgs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Normalize a message sequence for Anthropic's ``/messages`` endpoint.
 
-        Anthropic's contract is stricter than OpenAI's:
+        Anthropic's contract requires:
 
-        1. Consecutive same-role turns must be collapsed into one.
-        2. The conversation cannot end with an ``assistant`` turn — Anthropic
-           does not support assistant-message prefill and returns 400.
-        3. The conversation cannot start with an ``assistant`` turn — the
-           first message must be ``user``.
+        1. Consecutive same-role turns collapsed into one.
+        2. Conversation cannot end with an ``assistant`` turn (no prefill).
+        3. Conversation cannot start with an ``assistant`` turn.
 
-        Rules 2 and 3 mirror ``LLMProvider._enforce_role_alternation`` in
-        ``base.py``, which applies the equivalent invariants to OpenAI-compat
-        providers.  The only Anthropic-specific wrinkle: ``tool_use`` blocks
-        live inside ``content`` (not a separate ``tool_calls`` field) and are
-        invalid inside ``user`` turns, so the recovery paths below must skip
-        any message carrying them rather than silently producing a malformed
-        request.
+        ``tool_use`` blocks live inside ``content`` (not a separate ``tool_calls``
+        field) and are invalid inside ``user`` turns, so recovery paths skip any
+        message carrying them to avoid producing a malformed request.
         """
         merged: list[dict[str, Any]] = []
         for msg in msgs:

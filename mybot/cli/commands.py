@@ -5,17 +5,15 @@ import typer
 
 app = typer.Typer()
 
-from typing import Any
-
 from rich.console import Console
 
 console = Console()
 
-from prompt_toolkit import PromptSession, print_formatted_text
-from prompt_toolkit.formatted_text import ANSI, HTML
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.patch_stdout import patch_stdout
 
-from mybot import __logo__, __version__
+from mybot import __logo__
 from mybot.cli.stream import StreamRenderer, ThinkingSpinner
 
 _PROMPT_SESSION: PromptSession | None = None
@@ -104,14 +102,7 @@ def ask(
         logger.disable("mybot")
 
     agent_loop = AgentLoop(provider=provider, model=model, bus=bus)
-
-    # Shared reference for progress callbacks
     _thinking: ThinkingSpinner | None = None
-
-    async def _cli_progress(
-        content: str, *, tool_hint: bool = False, **_kwargs: Any
-    ) -> None:
-        _print_cli_progress_line(content, _thinking)
 
     if message:
         # Single message mode
