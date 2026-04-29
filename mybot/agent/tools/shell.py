@@ -38,7 +38,9 @@ class ShellTool(Tool):
             "required": ["command"],
         }
 
-    async def execute(self, command: str, timeout: int = 30, working_dir: str | None = None) -> str:
+    async def execute(
+        self, command: str, timeout: int = 30, working_dir: str | None = None
+    ) -> str:
         try:
             proc = await asyncio.create_subprocess_shell(
                 command,

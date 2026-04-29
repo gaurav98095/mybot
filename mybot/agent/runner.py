@@ -7,7 +7,9 @@ MAX_TOOL_ROUNDS = 10
 
 
 class AgentRunner:
-    def __init__(self, provider: LLMProvider, model: str, registry: ToolRegistry | None = None):
+    def __init__(
+        self, provider: LLMProvider, model: str, registry: ToolRegistry | None = None
+    ):
         self.provider = provider
         self.model = model
         self.registry = registry or ToolRegistry()
@@ -48,11 +50,13 @@ class AgentRunner:
                     except Exception as exc:
                         result = f"error: {exc}"
                         logger.error("Tool '{}' raised: {}", tc.name, exc)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": str(result),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": str(result),
+                    }
+                )
 
         return response
 

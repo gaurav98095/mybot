@@ -92,9 +92,6 @@ class GenerationSettings:
     reasoning_effort: str | None = None
 
 
-_SYNTHETIC_USER_CONTENT = "(conversation continued)"
-
-
 class LLMProvider(ABC):
     """Base class for LLM providers."""
 
@@ -265,20 +262,6 @@ class LLMProvider(ABC):
                 ordered_unique.append(idx)
         return ordered_unique
 
-    @staticmethod
-    def _sanitize_request_messages(
-        messages: list[dict[str, Any]],
-        allowed_keys: frozenset[str],
-    ) -> list[dict[str, Any]]:
-        """Keep only provider-safe message keys and normalize assistant content."""
-        sanitized = []
-        for msg in messages:
-            clean = {k: v for k, v in msg.items() if k in allowed_keys}
-            if clean.get("role") == "assistant" and "content" not in clean:
-                clean["content"] = None
-            sanitized.append(clean)
-        return sanitized
-
     @abstractmethod
     async def chat(
         self,
@@ -387,79 +370,6 @@ class LLMProvider(ABC):
             return True
         # Unknown 429 defaults to WAIT+retry.
         return True
-
-    @staticmethod
-    def _enforce_role_alternation(
-        messages: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Merge consecutive same-role messages and drop trailing assistant messages.
-
-        Some providers (OpenAI-compat, Azure, vLLM, Ollama, etc.) reject requests
-        where the last message is 'assistant' (prefill not supported) or two
-        consecutive non-system messages share the same role.
-        """
-        if not messages:
-            return messages
-
-        merged: list[dict[str, Any]] = []
-        for msg in messages:
-            role = msg.get("role")
-            if (
-                merged
-                and role != "system"
-                and role not in ("tool",)
-                and merged[-1].get("role") == role
-                and role in ("user", "assistant")
-            ):
-                prev = merged[-1]
-                if role == "assistant":
-                    prev_has_tools = bool(prev.get("tool_calls"))
-                    curr_has_tools = bool(msg.get("tool_calls"))
-                    if curr_has_tools:
-                        merged[-1] = dict(msg)
-                        continue
-                    if prev_has_tools:
-                        continue
-                prev_content = prev.get("content") or ""
-                curr_content = msg.get("content") or ""
-                if isinstance(prev_content, str) and isinstance(curr_content, str):
-                    prev["content"] = (prev_content + "\n\n" + curr_content).strip()
-                else:
-                    merged[-1] = dict(msg)
-            else:
-                merged.append(dict(msg))
-
-        last_popped = None
-        while merged and merged[-1].get("role") == "assistant":
-            last_popped = merged.pop()
-
-        # If removing trailing assistant messages left only system messages,
-        # the request would be invalid for most providers (e.g. Zhipu/GLM
-        # error 1214).  Recover by converting the last popped assistant
-        # message to a user message so the LLM can still see the content.
-        if (
-            merged
-            and last_popped is not None
-            and not any(m.get("role") in ("user", "tool") for m in merged)
-        ):
-            recovered = dict(last_popped)
-            recovered["role"] = "user"
-            merged.append(recovered)
-
-        # Safety net: ensure the first non-system message is not a bare
-        # ``assistant`` message.  Providers like GLM reject system→assistant
-        # with error 1214.  This can happen when upstream truncation (e.g.
-        # _snip_history) drops the only user message.  Insert a synthetic
-        # user message to keep the sequence valid.
-        for i, msg in enumerate(merged):
-            if msg.get("role") != "system":
-                if msg.get("role") == "assistant" and not msg.get("tool_calls"):
-                    merged.insert(
-                        i, {"role": "user", "content": _SYNTHETIC_USER_CONTENT}
-                    )
-                break
-
-        return merged
 
     @staticmethod
     def _strip_image_content(
