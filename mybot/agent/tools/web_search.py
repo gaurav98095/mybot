@@ -102,7 +102,11 @@ class WebSearchTool(Tool):
 
         hits = await asyncio.get_event_loop().run_in_executor(None, _sync)
         return [
-            _Result(title=h.get("title", ""), url=h.get("href", ""), snippet=h.get("body", ""))
+            _Result(
+                title=h.get("title", ""),
+                url=h.get("href", ""),
+                snippet=h.get("body", ""),
+            )
             for h in hits
         ]
 
@@ -117,7 +121,11 @@ class WebSearchTool(Tool):
             resp.raise_for_status()
             data = resp.json()
         return [
-            _Result(title=r.get("title", ""), url=r.get("url", ""), snippet=r.get("content", ""))
+            _Result(
+                title=r.get("title", ""),
+                url=r.get("url", ""),
+                snippet=r.get("content", ""),
+            )
             for r in data.get("results", [])
         ]
 
@@ -137,7 +145,11 @@ class WebSearchTool(Tool):
             resp.raise_for_status()
             data = resp.json()
         return [
-            _Result(title=r.get("title", ""), url=r.get("url", ""), snippet=r.get("description", ""))
+            _Result(
+                title=r.get("title", ""),
+                url=r.get("url", ""),
+                snippet=r.get("description", ""),
+            )
             for r in data.get("web", {}).get("results", [])
         ]
 
@@ -148,17 +160,29 @@ class WebSearchTool(Tool):
         async with self._client() as client:
             resp = await client.get(
                 f"{base}/search",
-                params={"q": query, "format": "json", "categories": "general", "language": "en"},
+                params={
+                    "q": query,
+                    "format": "json",
+                    "categories": "general",
+                    "language": "en",
+                },
             )
             resp.raise_for_status()
             data = resp.json()
         return [
-            _Result(title=r.get("title", ""), url=r.get("url", ""), snippet=r.get("content", ""))
+            _Result(
+                title=r.get("title", ""),
+                url=r.get("url", ""),
+                snippet=r.get("content", ""),
+            )
             for r in data.get("results", [])[:n]
         ]
 
     async def _jina(self, query: str, n: int) -> list[_Result]:
-        headers: dict[str, str] = {"Accept": "application/json", "X-Return-Format": "json"}
+        headers: dict[str, str] = {
+            "Accept": "application/json",
+            "X-Return-Format": "json",
+        }
         if self._cfg.api_key:
             headers["Authorization"] = f"Bearer {self._cfg.api_key}"
         async with self._client() as client:
@@ -169,7 +193,11 @@ class WebSearchTool(Tool):
             resp.raise_for_status()
             data = resp.json()
         return [
-            _Result(title=r.get("title", ""), url=r.get("url", ""), snippet=r.get("description", ""))
+            _Result(
+                title=r.get("title", ""),
+                url=r.get("url", ""),
+                snippet=r.get("description", ""),
+            )
             for r in data.get("data", [])[:n]
         ]
 
@@ -186,6 +214,10 @@ class WebSearchTool(Tool):
             data = resp.json()
         items = [d for d in data.get("data", []) if d.get("t") == 0]
         return [
-            _Result(title=r.get("title", ""), url=r.get("url", ""), snippet=r.get("snippet", ""))
+            _Result(
+                title=r.get("title", ""),
+                url=r.get("url", ""),
+                snippet=r.get("snippet", ""),
+            )
             for r in items[:n]
         ]
