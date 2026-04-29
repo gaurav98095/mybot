@@ -1,7 +1,7 @@
 [project]
 name = "mybot"
 version = "0.1.0"
-dependencies = ["typer"]
+dependencies = ["typer", "httpx", "ddgs"]
 
 [build-system]
 requires = ["setuptools"]

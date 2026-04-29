@@ -6,11 +6,11 @@ from mybot.agent.runner import AgentRunner
 from mybot.agent.tools.base import Tool
 from mybot.agent.tools.registry import ToolRegistry
 from mybot.agent.tools.shell import ShellTool
+from mybot.agent.tools.web_search import WebSearchTool
 from mybot.bus.events import InboundMessage, OutboundMessage
 from mybot.bus.queue import MessageBus
+from mybot.config.schema import WebSearchConfig
 from mybot.providers.base import LLMProvider
-
-_DEFAULT_TOOLS: list[Tool] = [ShellTool()]
 
 
 class AgentLoop:
@@ -30,14 +30,22 @@ class AgentLoop:
         model: str,
         bus: MessageBus,
         tools: list[Tool] | None = None,
+        search_config: WebSearchConfig | None = None,
+        proxy: str | None = None,
     ):
         self.bus = bus
         self.model = model
         self._running = False
         self._history: list[dict] = []
 
+        if tools is None:
+            tools = [
+                ShellTool(),
+                WebSearchTool(config=search_config, proxy=proxy),
+            ]
+
         registry = ToolRegistry()
-        for tool in (tools if tools is not None else _DEFAULT_TOOLS):
+        for tool in tools:
             registry.register(tool)
 
         self.runner = AgentRunner(provider, model, registry)

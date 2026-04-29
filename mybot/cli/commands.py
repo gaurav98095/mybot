@@ -101,7 +101,13 @@ def ask(
     else:
         logger.disable("mybot")
 
-    agent_loop = AgentLoop(provider=provider, model=model, bus=bus)
+    agent_loop = AgentLoop(
+        provider=provider,
+        model=model,
+        bus=bus,
+        search_config=config.tools.web.search,
+        proxy=config.tools.web.proxy,
+    )
     _thinking: ThinkingSpinner | None = None
 
     if message:
