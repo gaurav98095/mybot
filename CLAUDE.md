@@ -19,8 +19,6 @@ Config lives at `~/.mybot/config.json`. All config fields can be overridden via 
 
 Interactive REPL history is persisted (see `mybot/config/paths.py` for the path). The stream idle timeout defaults to 90 s and can be overridden with `MYBOT_STREAM_IDLE_TIMEOUT_S`.
 
-**Note:** `pyproject.toml` lists only a subset of runtime dependencies. The following are also required but not declared: `anthropic`, `loguru`, `rich`, `prompt_toolkit`, `pydantic`, `pydantic-settings`, `json-repair`, `mcp`.
-
 Run the test suite with `pytest` (or `./run_tests.sh`). Tests live in `tests/`.
 
 ## Architecture

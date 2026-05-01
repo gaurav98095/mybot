@@ -26,17 +26,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -e ".[test]"
-          pip install \
-            anthropic \
-            loguru \
-            rich \
-            prompt_toolkit \
-            pydantic \
-            pydantic-settings \
-            json-repair \
-            mcp
+        run: pip install -e ".[test]"
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
