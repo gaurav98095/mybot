@@ -17,14 +17,15 @@ class AgentRunner:
         self.model = model
         self.registry = registry or ToolRegistry()
 
-    async def run(self, messages: list) -> LLMResponse:
+    async def run(self, messages: list, model: str | None = None) -> LLMResponse:
+        effective_model = model or self.model
         tools = self._tool_schemas() or None
         response = LLMResponse(content=None)
 
         for _ in range(MAX_TOOL_ROUNDS + 1):
             response = await self.provider.chat_with_retry(
                 messages=messages,
-                model=self.model,
+                model=effective_model,
                 tools=tools,
             )
             if not response.should_execute_tools:

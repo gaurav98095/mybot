@@ -13,7 +13,7 @@ from mybot.agent.tools.subagent import SubagentTool
 from mybot.agent.tools.web_search import WebSearchTool
 from mybot.bus.events import InboundMessage, OutboundMessage
 from mybot.bus.queue import MessageBus
-from mybot.config.schema import WebSearchConfig
+from mybot.config.schema import ClassifierConfig, WebSearchConfig
 from mybot.providers.base import LLMProvider
 
 
@@ -37,11 +37,24 @@ class AgentLoop:
         extra_tools: list[Tool] | None = None,
         search_config: WebSearchConfig | None = None,
         proxy: str | None = None,
+        classifier_config: ClassifierConfig | None = None,
     ):
         self.bus = bus
         self.model = model
         self._running = False
         self._history: list[dict] = []
+
+        self._classifier = None
+        if classifier_config and classifier_config.enabled:
+            from mybot.agent.classifier import PreTurnClassifier
+            self._classifier = PreTurnClassifier(provider, classifier_config)
+            logger.info(
+                "Pre-turn classifier enabled (classifier={}, simple={}, medium={}, complex={})",
+                classifier_config.classifier_model,
+                classifier_config.simple_model,
+                classifier_config.medium_model,
+                classifier_config.complex_model,
+            )
 
         if tools is None:
             # sub_tools are given to subagents — no SubagentTool to prevent recursion
@@ -90,9 +103,14 @@ class AgentLoop:
         ) as span:
             self._history.append({"role": "user", "content": msg.content})
             try:
+                model: str | None = None
+                if self._classifier:
+                    model = await self._classifier.select_model(
+                        msg.content, self._history[:-1]  # history before this turn
+                    )
                 # runner mutates self._history with any intermediate tool call/result
                 # messages, then returns the final text response
-                response = await self.runner.run(self._history)
+                response = await self.runner.run(self._history, model=model)
                 reply = response.content or ""
                 span.set_attribute("output.value", reply)
                 self._history.append({"role": "assistant", "content": reply})

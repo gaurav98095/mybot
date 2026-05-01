@@ -2,6 +2,9 @@ import asyncio
 from typing import Any
 
 from mybot.agent.tools.base import Tool
+from mybot.templates import load as _load
+
+_DESCRIPTION = _load("tools", "shell")
 
 
 class ShellTool(Tool):
@@ -11,10 +14,7 @@ class ShellTool(Tool):
 
     @property
     def description(self) -> str:
-        return (
-            "Run a shell command and return its stdout, stderr, and exit code. "
-            "Use for file operations, running scripts, checking system state, etc."
-        )
+        return _DESCRIPTION
 
     @property
     def parameters(self) -> dict[str, Any]:

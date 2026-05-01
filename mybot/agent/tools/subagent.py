@@ -9,6 +9,9 @@ from typing import Any
 
 from mybot.agent.tools.base import Tool
 from mybot.providers.base import LLMProvider
+from mybot.templates import load as _load
+
+_DESCRIPTION = _load("tools", "subagent")
 
 _ID_CHARS = string.ascii_lowercase + string.digits
 
@@ -62,12 +65,7 @@ class SubagentTool(Tool):
 
     @property
     def description(self) -> str:
-        return (
-            "Spawn a background subagent to handle a complex or long-running task. "
-            "Actions: 'spawn' starts a task and returns a task_id immediately; "
-            "'result' retrieves output for a task_id (poll until DONE); "
-            "'list' shows all tasks and their status."
-        )
+        return _DESCRIPTION
 
     @property
     def parameters(self) -> dict[str, Any]:

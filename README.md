@@ -101,6 +101,28 @@ Enable in config, then open `http://localhost:6006`:
 
 Each user message is traced as a separate session with all LLM calls and tool executions nested inside.
 
+## Pre-turn Classifier
+
+Automatically route each message to the cheapest model that can handle it. Disabled by default.
+
+```json
+{
+  "classifier": {
+    "enabled": true,
+    "classifierModel": "anthropic/claude-haiku-4-5-20251001",
+    "simpleModel":     "anthropic/claude-haiku-4-5-20251001",
+    "mediumModel":     "anthropic/claude-sonnet-4-6",
+    "complexModel":    "anthropic/claude-opus-4-5"
+  }
+}
+```
+
+A single cheap LLM call classifies each message as `simple`, `medium`, or `complex` before the main turn. The selected tier model is used for that turn.
+
+## Prompt Templates
+
+All prompts live in `templates/<usecase>/<name>.md` and are loaded at import time via `mybot/templates.py`. To customise a prompt, edit the relevant `.md` file — no Python changes needed. Override the templates directory with the `MYBOT_TEMPLATES_DIR` environment variable.
+
 ## Config
 
 Full config path: `~/.mybot/config.json`. All fields can be overridden via env vars prefixed `MYBOT_` with `__` as delimiter — e.g. `MYBOT_PROVIDERS__ANTHROPIC__API_KEY`.

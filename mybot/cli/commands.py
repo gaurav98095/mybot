@@ -195,6 +195,7 @@ def ask(
             extra_tools=extra_tools,
             search_config=config.tools.web.search,
             proxy=config.tools.web.proxy,
+            classifier_config=config.classifier,
         )
 
     if message:
