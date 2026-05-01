@@ -34,6 +34,7 @@ class AgentLoop:
         model: str,
         bus: MessageBus,
         tools: list[Tool] | None = None,
+        extra_tools: list[Tool] | None = None,
         search_config: WebSearchConfig | None = None,
         proxy: str | None = None,
     ):
@@ -51,6 +52,9 @@ class AgentLoop:
             tools = sub_tools + [
                 SubagentTool(provider=provider, model=model, sub_tools=sub_tools),
             ]
+
+        if extra_tools:
+            tools = tools + list(extra_tools)
 
         registry = ToolRegistry()
         for tool in tools:

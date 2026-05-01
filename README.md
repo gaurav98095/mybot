@@ -1,6 +1,6 @@
 # mybot
 
-CLI chatbot powered by Claude. Supports tool use, web search, and background subagents.
+CLI chatbot powered by Claude. Supports tool use, web search, background subagents, and any MCP server.
 
 ## Install
 
@@ -41,6 +41,7 @@ mybot ask --logs        # show runtime logs
 | `shell` | Run shell commands |
 | `web_search` | Search the web (DuckDuckGo by default) |
 | `subagent` | Spawn background subagents for parallel tasks |
+| `mcp_<server>__<tool>` | Any tool exposed by a configured MCP server |
 
 ### Web search providers
 
@@ -55,6 +56,35 @@ Set `tools.web.search.provider` in config. Options: `duckduckgo` (default, no ke
   }
 }
 ```
+
+## MCP Servers
+
+Add any MCP server under `mcp.servers` in config. Supported transports: `stdio`, `sse`, `http`.
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      },
+      "my-api": {
+        "type": "sse",
+        "url": "http://localhost:8000/sse"
+      },
+      "remote": {
+        "type": "http",
+        "url": "http://localhost:9000/mcp",
+        "headers": { "Authorization": "Bearer sk-..." }
+      }
+    }
+  }
+}
+```
+
+All tools advertised by each server are discovered at startup and registered as `mcp_<server_id>__<tool_name>`. The agent can call them like any built-in tool.
 
 ## Tracing (Arize Phoenix)
 

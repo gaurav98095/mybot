@@ -171,20 +171,39 @@ def ask(
     else:
         logger.disable("mybot")
 
-    agent_loop = AgentLoop(
-        provider=provider,
-        model=model,
-        bus=bus,
-        search_config=config.tools.web.search,
-        proxy=config.tools.web.proxy,
-    )
-    _thinking: ThinkingSpinner | None = None
+    async def _start_mcp():
+        from mybot.agent.tools.mcp import MCPManager
+
+        manager = MCPManager(dict(config.mcp.servers))
+        if config.mcp.servers:
+            await manager.start()
+            tools = manager.get_all_tools()
+            if tools:
+                console.print(
+                    f"[dim]MCP: loaded {len(tools)} tool(s) from "
+                    f"{len(config.mcp.servers)} server(s)[/dim]"
+                )
+        else:
+            tools = []
+        return manager, tools
+
+    def _build_loop(extra_tools):
+        return AgentLoop(
+            provider=provider,
+            model=model,
+            bus=bus,
+            extra_tools=extra_tools,
+            search_config=config.tools.web.search,
+            proxy=config.tools.web.proxy,
+        )
 
     if message:
         # Single message mode
         async def run_once():
             from mybot.bus.events import InboundMessage
 
+            mcp_manager, mcp_tools = await _start_mcp()
+            agent_loop = _build_loop(mcp_tools)
             loop_task = asyncio.create_task(agent_loop.run())
             await bus.publish_inbound(
                 InboundMessage(
@@ -201,6 +220,7 @@ def ask(
                 console.print("[red]Timeout waiting for response[/red]")
             finally:
                 loop_task.cancel()
+                await mcp_manager.stop()
 
         asyncio.run(run_once())
 
@@ -217,6 +237,8 @@ def ask(
             cli_channel, cli_chat_id = "cli", session_id
 
         async def run_interactive():
+            mcp_manager, mcp_tools = await _start_mcp()
+            agent_loop = _build_loop(mcp_tools)
             bus_task = asyncio.create_task(agent_loop.run())
             turn_done = asyncio.Event()
             turn_done.set()
@@ -251,31 +273,36 @@ def ask(
 
             outbound_task = asyncio.create_task(_consume_outbound())
 
-            while True:
-                if renderer:
-                    renderer.stop_for_input()
-                user_input = await _read_interactive_input_async()
-                command = user_input.strip()
-                if not command:
-                    continue
+            try:
+                while True:
+                    if renderer:
+                        renderer.stop_for_input()
+                    user_input = await _read_interactive_input_async()
+                    command = user_input.strip()
+                    if not command:
+                        continue
 
-                turn_done.clear()
-                turn_response.clear()
-                markdown = True
-                renderer = StreamRenderer(render_markdown=markdown)
-                from mybot.bus.events import InboundMessage
+                    turn_done.clear()
+                    turn_response.clear()
+                    markdown = True
+                    renderer = StreamRenderer(render_markdown=markdown)
+                    from mybot.bus.events import InboundMessage
 
-                await bus.publish_inbound(
-                    InboundMessage(
-                        channel=cli_channel,
-                        sender_id="user",
-                        chat_id=cli_chat_id,
-                        content=user_input,
-                        metadata={"_wants_stream": True},
+                    await bus.publish_inbound(
+                        InboundMessage(
+                            channel=cli_channel,
+                            sender_id="user",
+                            chat_id=cli_chat_id,
+                            content=user_input,
+                            metadata={"_wants_stream": True},
+                        )
                     )
-                )
 
-                await turn_done.wait()
+                    await turn_done.wait()
+            finally:
+                outbound_task.cancel()
+                bus_task.cancel()
+                await mcp_manager.stop()
 
         asyncio.run(run_interactive())
 
