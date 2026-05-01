@@ -5,14 +5,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Setup & Running
 
 ```bash
+<<<<<<< Updated upstream
 pip install -e .          # install in editable mode
 mybot onboard             # create ~/.mybot/config.json (add API key after)
 mybot ask                 # interactive chat (REPL)
 mybot ask -m "Hello"      # single-message mode (not yet implemented)
 mybot ask --logs          # show runtime logs during chat
+=======
+pip install -e .                    # install in editable mode (includes tracing deps)
+mybot onboard                       # create ~/.mybot/config.json (add API key after)
+mybot onboard --workdir <path>      # also set custom agent workspace directory
+mybot ask                           # interactive chat (REPL)
+mybot ask -m "Hello"                # single-message mode
+mybot ask --logs                    # show runtime logs during chat
+mybot phoenix start                 # start Arize Phoenix tracing container (Docker)
+mybot phoenix stop                  # stop Phoenix container
+>>>>>>> Stashed changes
 ```
 
 Config lives at `~/.mybot/config.json`. All config fields can be overridden via env vars prefixed `MYBOT_` with `__` as nested delimiter (e.g. `MYBOT_AGENTS__DEFAULTS__MODEL`).
+
+Interactive REPL history is persisted (see `mybot/config/paths.py` for the path). The stream idle timeout defaults to 90 s and can be overridden with `MYBOT_STREAM_IDLE_TIMEOUT_S`.
+
+**Note:** `pyproject.toml` lists only a subset of runtime dependencies. The following are also required but not declared: `anthropic`, `loguru`, `rich`, `prompt_toolkit`, `pydantic`, `pydantic-settings`, `json-repair`. There is no test suite.
 
 ## Architecture
 
@@ -40,7 +55,13 @@ CLI / Channel  →  MessageBus.inbound  →  AgentLoop  →  AgentRunner  →  L
 
 - **`providers/anthropic.py`** — Converts OpenAI-style message dicts to Anthropic Messages API format, handles prompt caching (`cache_control`), extended thinking (`reasoning_effort`), tool-call format, and streaming via the native Anthropic SDK.
 
+<<<<<<< Updated upstream
 - **`config/schema.py`** — Pydantic `Config` root model. `Config._match_provider()` auto-selects a provider from `providers.*` by matching model name keywords against the provider registry. Supports camelCase ↔ snake_case keys via `alias_generator=to_camel`.
+=======
+- **`providers/anthropic.py`** — Converts OpenAI-style message dicts to Anthropic Messages API format, handles prompt caching (`cache_control`), extended thinking (`reasoning_effort`: `adaptive` | `low` | `medium` | `high`), tool-call format, and streaming. `adaptive` lets the model decide when to think; `low/medium/high` set token budgets (1024 / 4096 / max). `claude-opus-4-7` rejects the `temperature` parameter entirely — the provider strips it automatically for that model.
+
+- **`config/schema.py`** — Pydantic `Config` root with: `agents`, `providers` (anthropic only), `tools` (web search config + `tools.web.proxy` for HTTP/SOCKS5 proxy), `phoenix` (tracing config). Supports camelCase ↔ snake_case via `alias_generator=to_camel`. Default model is `anthropic/claude-opus-4-5`; the `anthropic/` prefix is stripped before the API call.
+>>>>>>> Stashed changes
 
 - **`config/loader.py`** — Load/save `Config` as JSON. Default path: `~/.mybot/config.json`.
 
