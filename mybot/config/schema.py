@@ -73,6 +73,16 @@ class PhoenixConfig(Base):
     image: str = "arizephoenix/phoenix:latest"
 
 
+class ClassifierConfig(Base):
+    """Pre-turn task complexity classifier."""
+
+    enabled: bool = False
+    classifier_model: str = "anthropic/claude-haiku-4-5-20251001"
+    simple_model: str = "anthropic/claude-haiku-4-5-20251001"
+    medium_model: str = "anthropic/claude-sonnet-4-6"
+    complex_model: str = "anthropic/claude-opus-4-5"
+
+
 class MCPServerConfig(Base):
     """Configuration for a single MCP server connection."""
 
@@ -101,5 +111,6 @@ class Config(BaseSettings):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     phoenix: PhoenixConfig = Field(default_factory=PhoenixConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
+    classifier: ClassifierConfig = Field(default_factory=ClassifierConfig)
 
     model_config = ConfigDict(env_prefix="MYBOT_", env_nested_delimiter="__")

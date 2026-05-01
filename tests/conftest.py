@@ -6,6 +6,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+async def cancel_background_tasks():
+    """Cancel any asyncio tasks left over from a test before the loop closes."""
+    yield
+    tasks = [t for t in asyncio.all_tasks() if not t.done() and t is not asyncio.current_task()]
+    for t in tasks:
+        t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
 from mybot.bus.events import InboundMessage, OutboundMessage
 from mybot.bus.queue import MessageBus
 from mybot.providers.base import GenerationSettings, LLMProvider, LLMResponse, ToolCallRequest

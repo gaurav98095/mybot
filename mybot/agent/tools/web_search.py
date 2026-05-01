@@ -9,6 +9,9 @@ import httpx
 
 from mybot.agent.tools.base import Tool
 from mybot.config.schema import WebSearchConfig
+from mybot.templates import load as _load
+
+_DESCRIPTION = _load("tools", "web_search")
 
 
 @dataclass
@@ -29,10 +32,7 @@ class WebSearchTool(Tool):
 
     @property
     def description(self) -> str:
-        return (
-            "Search the web and return relevant results with titles, URLs, and snippets. "
-            "Use for current events, documentation, news, or any topic needing up-to-date information."
-        )
+        return _DESCRIPTION
 
     @property
     def parameters(self) -> dict[str, Any]:

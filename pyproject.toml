@@ -3,25 +3,37 @@ name = "mybot"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic",
     "typer",
     "httpx",
     "ddgs",
+    "loguru",
+    "rich",
+    "prompt_toolkit",
+    "pydantic",
+    "pydantic-settings",
+    "json-repair",
+    "mcp",
     "opentelemetry-api",
     "arize-phoenix-otel",
     "openinference-instrumentation-anthropic",
-    "mcp",
 ]
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-asyncio"]
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mybot*"]
 
 [project.scripts]
 mybot = "mybot.cli.commands:app"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
