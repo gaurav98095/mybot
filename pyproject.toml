@@ -1,7 +1,14 @@
 [project]
 name = "mybot"
 version = "0.1.0"
-dependencies = ["typer", "httpx", "ddgs"]
+dependencies = [
+    "typer",
+    "httpx",
+    "ddgs",
+    "opentelemetry-api",
+    "arize-phoenix-otel",
+    "openinference-instrumentation-anthropic",
+]
 
 [build-system]
 requires = ["setuptools"]
