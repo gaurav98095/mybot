@@ -1,6 +1,7 @@
 [project]
 name = "mybot"
 version = "0.1.0"
+requires-python = ">=3.12"
 dependencies = [
     "typer",
     "httpx",
@@ -11,9 +12,16 @@ dependencies = [
     "mcp",
 ]
 
+[project.optional-dependencies]
+test = ["pytest", "pytest-asyncio"]
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
 mybot = "mybot.cli.commands:app"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
