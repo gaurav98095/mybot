@@ -73,6 +73,26 @@ class PhoenixConfig(Base):
     image: str = "arizephoenix/phoenix:latest"
 
 
+class MCPServerConfig(Base):
+    """Configuration for a single MCP server connection."""
+
+    type: str  # "stdio" | "sse" | "http"
+    # stdio transport
+    command: str | None = None
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] | None = None
+    cwd: str | None = None
+    # sse / http transport
+    url: str | None = None
+    headers: dict[str, str] | None = None
+
+
+class MCPConfig(Base):
+    """MCP server configuration."""
+
+    servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+
+
 class Config(BaseSettings):
     """Root configuration for mybot."""
 
@@ -80,5 +100,6 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     phoenix: PhoenixConfig = Field(default_factory=PhoenixConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     model_config = ConfigDict(env_prefix="MYBOT_", env_nested_delimiter="__")

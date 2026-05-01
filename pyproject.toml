@@ -8,6 +8,7 @@ dependencies = [
     "opentelemetry-api",
     "arize-phoenix-otel",
     "openinference-instrumentation-anthropic",
+    "mcp",
 ]
 
 [build-system]
